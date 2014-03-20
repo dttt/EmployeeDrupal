@@ -1,0 +1,3 @@
+name = Employee
+description = Module to insert, edit, show employees
+core = 7.x

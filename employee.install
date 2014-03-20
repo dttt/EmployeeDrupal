@@ -1,0 +1,72 @@
+<?php
+/**
+ * Implement hook_schema
+ *
+ * Create table employee to use by modul
+ */
+function employee_schema() {
+	$schema['employee'] = array(
+		'description' => 'The base table for employee',
+		'fields' => array(
+			// Primary key
+			'eid' => array(
+				'description' => 'The primary key for employee table',
+				'type' => 'serial',
+				'unsigned' => TRUE,
+				'not null' => TRUE
+			), 
+			// Version identifier
+			'vid' => array(
+				'description' => 'The current {employee_revisions}.vid version identifier',
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0
+			),
+			// Name column
+			'name' => array(
+				'description' => 'The {employee_name} of this employee',
+				'type' => 'varchar',
+				'length' => 32,
+				'not null' => TRUE,
+			),
+			// Gender column
+			'gender' => array(
+				'description' => 'The {employee_gender} of this employee',
+				'type' => 'int',
+				'length' => 1,
+				'not null' => TRUE,
+				'default' => 1
+			),
+			// Department column
+			'department' => array(
+				'description' => 'The {employee_department} of this employee',
+				'type' => 'varchar',
+				'length' => 32,
+				'not null' => TRUE
+			),
+			// Timestamp when an employee's record created in database
+			'created' => array(
+				'description' => 'Timestamp when this employee was hired',
+				'type' => 'int',
+				'not null' => TRUE,
+				'default' => 0
+			),
+			// Timestamp when an employee's record changed in database
+			'changed' => array(
+				'description' => 'Timestamp when this employee change',
+				'type' => 'int',
+				'not null' => TRUE,
+				'default' => 0
+			),
+		), 
+		// Indexes
+		'indexes' => array(
+			'employee_changed' => array('changed'),
+			'employee_created' => array('created')
+ 		),
+ 		// Key
+ 		'primary key' => array('eid'),	
+	);
+	return $schema;
+}

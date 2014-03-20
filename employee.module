@@ -1,0 +1,18 @@
+<?php
+/**
+ * A excercise module to insert, edit, show employees
+ */
+
+/**
+ * Implement hook_help
+ * 
+ * Display employee module help
+ */
+function employee_help($path, $arg) {
+	switch ($path) {
+		case "admin/help#employee":
+			return '<p>' . t("Insert, edit, show employee") . '</p>';
+			break;
+	}
+}
+
