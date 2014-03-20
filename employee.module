@@ -4,15 +4,398 @@
  */
 
 /**
- * Implement hook_help
+ * Implement hook_help.
  * 
- * Display employee module help
+ * Display employee module help.
  */
 function employee_help($path, $arg) {
 	switch ($path) {
 		case "admin/help#employee":
 			return '<p>' . t("Insert, edit, show employee") . '</p>';
 			break;
+	}
+}
+
+/**
+ * Implement hook_block_info.
+ */
+function employee_block_info() {
+	$blocks['employee'] = array(
+		// Name will appear in block list.
+		'info' => t('Employee'),
+		// Default setting.
+		'cache' => DRUPAL_CACHE_PER_ROLE,
+	);
+	return $blocks;
+}
+
+/**
+ * Implement hook_block_view
+ */
+function employee_block_view($delta = '') {
+	switch ($delta) {
+		case 'employee':
+			$block['subject'] = t('Employee module');
+			if (user_access('access content')) {
+				// Items contain all page relate to the employee module
+				$items = array();
+				
+				$items[0] = array(
+					'data' => l('Show all employee', 'employee_show_all'),
+				);
+				$items[1] = array(
+					'data' => l('Insert new employee', 'employee_insert'),
+				);
+				$block['content']['employee_command'] = array(
+					'#theme' => 'item_list__employee__block',
+					'#items' => $items,
+				);
+			}
+			return $block;
+	}
+}
+
+/**
+ * Implement hook_menu.
+ */
+function employee_menu() {
+	$items = array();
+	// Custom form for insert an employee's information
+	$items['employee_insert'] = array(
+		'title' => 'Insert new employee',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('employee_form_insert'),
+		'access callback' => TRUE,
+		'access arguments' => array('access employee pages'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+	// Custom form for edit an employee's information
+	$items['employee_edit/%edit_id'] = array(
+		'title' => 'Edit an employee',
+		//'page callback' => 'drupal_get_form',
+		'page arguments' => array('employee_form_edit', 1),
+		//'access callback' => TRUE,
+		'access arguments' => array('access employee pages'),
+		'type' => MENU_CALLBACK,
+	);
+	// Custom page to show all employee order by abc
+	$items['employee_show_all'] = array(
+		'title' => 'Show all employee order by abc',
+		'page callback' => '_employee_show_all_page',
+		'access arguments' => array('access employee pages'),
+		//'access callback' => 'user_access',
+		'type' => MENU_NORMAL_ITEM,
+	);
+	return $items;
+}
+
+/**
+ * Implement hook_load.
+ *
+ * @param eid
+ *        ID of employee that need to edit.
+ */
+function edit_id_load($edit_id) {
+	if ($edit_id == $edit_id)
+	{ return $edit_id; }
+	else {
+		return false;
+	}
+}
+
+/**
+ * Implements hook_permission().
+ */
+function employee_permission() {
+	return array(
+		'access employee content' => array(
+			'title' => t('Access content for the Employee module.')
+		)
+	);
+}
+
+/**
+ * Custom function to read all employees in database.
+ */
+function employee_show_all_content() {
+	$query = db_select('employee', 'e')
+		->fields('e', array('eid', 'name', 'email', 'created'))
+		->orderBy('name', 'ASC')
+		->execute();
+	return $query;
+}
+
+/**
+ * Custom function to generate a form for insert new employee's information.
+ */
+function employee_form_insert($form, &$form_state) {
+	$form = array();
+	// Email field.
+	$form['email'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Email of employee'),
+		'#description' => t('Email'),
+		'#attributes' => array('placeholder' => t('Email address')),
+		'#required' => TRUE,
+		'#disable' => TRUE,
+		'#ajax' => array(
+			'callback' => 'employee_check_email_exist',
+			'wrapper' => 'display_error_div',
+		),
+	);
+	//
+	$form['display_error'] = array(
+		//'#type' => 'textfield',
+		'#prefix' => '<div id="display_error">',
+        '#suffix' => '</div>',
+	);
+	// Name field.
+	$form['name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Name of employee'),
+		'#description' => t(''),
+		'#attributes' => array('placeholder' => t('Name')),
+		'#required' => TRUE,
+	);
+	// Gender field.
+	$form['gender'] = array(
+		'#type' => 'radios',
+		'#title' => t('Gender of employee'),
+		'#description' => t(''),
+		'#default_value' => 1,
+		'#options' => array(
+			1 => t('Male'),
+			2 => t('Female'),
+		),
+		'#required' => TRUE,
+	);
+	// Department field.
+	$form['department'] = array(
+		'#type' => 'select',
+		'#title' => t('Department of employee'),
+		'#description' => t(''),
+		'#options' => array(
+			'HR' => 'Human resource',
+			'AD' => 'Administrator',
+			'IT' => 'IT',
+		),
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'Insert new employee',
+	);
+	return $form;
+}
+
+/**
+ * Implement method is_email_existed.
+ *
+ * @param email
+ *        The email need to check existion.
+ */
+function is_email_existed($email) {
+	$query = db_select('employee', 'e')
+		->fields('e', array('email'))
+		->condition('email', $email)
+		->execute();
+	if ($query->rowCount() == 0) {
+		return FALSE;
+	}
+	else {
+		return TRUE;
+	}
+}
+
+/**
+ * Implement method check existed email using ajax.
+ */
+function employee_check_email_exist($form, &$form_state) {
+	$email = $form_state['values']['email'];
+	if (is_email_existed($email)) {
+		form_set_error('email', t('The Email is already taken.'));
+		
+	} 
+	else {
+		drupal_get_messages('error');
+	}
+	$commands = array(); 
+	$commands[] = ajax_command_replace('#display_error', 
+		      '<div id="display_error">' . theme('status_messages') . '</div>'); 
+		return array( 
+		      '#type' => 'ajax', 
+		      '#commands' => $commands); 
+}
+
+/**
+ * Function validation callback for insert form
+ */
+function employee_form_insert_validate($form, &$form_state) {
+	$email = $form_state['values']['email'];
+	if (!valid_email_address($email)) {
+		form_set_error('email', t('The email is not valid.'));
+	}
+	elseif (is_email_existed($email)) {
+		form_set_error('email', t('The Email is already taken.'));
+	}
+}
+
+/**
+ * Function submit for insert form
+ */
+function employee_form_insert_submit($form, &$form_state) {
+	$data = $form_state['values'];
+	$fields = array(
+		'name' => $data['name'],
+		'email' => $data['email'],
+		'gender' => $data['gender'],
+		'department' => $data['department'],
+		'created' => REQUEST_TIME,
+	);
+	$query = db_insert('employee');
+	$query->fields($fields)->execute();
+	drupal_set_message(t('The employee was inserted in Database'));
+}
+
+/**
+ * Custom function to generate a form for edit an employee's information.
+ */
+function employee_form_edit($form, $form_state, $edit_id) {
+	$employee = view_employee_record($edit_id);
+	// Form
+	$form = array();
+	$form['eid'] = array(
+		'#type' => 'textfield',
+		'#title' => t('ID of employee'),
+		'#default_value' => $employee->eid,
+		'#disabled' => TRUE,
+	);
+	// Email field, disabled.
+	$form['email'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Email of employee'),
+		'#description' => t('Email'),
+		'#default_value' => $employee->email,
+		'#disabled' => TRUE,
+	);
+	//
+	$form['display_error'] = array(
+		//'#type' => 'textfield',
+		'#prefix' => '<div id="display_error">',
+        '#suffix' => '</div>',
+	);
+	// Name field.
+	$form['name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Name of employee'),
+		'#description' => t(''),
+		'#default_value' => $employee->name,
+		'#attributes' => array('placeholder' => t('Name')),
+		'#required' => TRUE,
+	);
+	// Gender field.
+	$form['gender'] = array(
+		'#type' => 'radios',
+		'#title' => t('Gender of employee'),
+		'#description' => t(''),
+		'#default_value' => $employee->gender,
+		'#options' => array(
+			1 => t('Male'),
+			2 => t('Female'),
+		),
+		'#required' => TRUE,
+	);
+	// Department field.
+	$form['department'] = array(
+		'#type' => 'select',
+		'#title' => t('Department of employee'),
+		'#description' => t(''),
+		'#default_value' => $employee->department,
+		'#options' => array(
+			'HR' => 'Human resource',
+			'AD' => 'Administrator',
+			'IT' => 'IT',
+		),
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'Insert new employee',
+	);
+	return $form;
+}
+
+/**
+ * Function validate for edit form
+ */
+function employee_form_edit_validate($form, &$form_state) {
+}
+
+/**
+ * Function submit for edit form
+ */
+function employee_form_edit_submit($form, &$form_state) {
+	$data = $form_state['values'];
+	$query = db_update('employee')
+		->fields(array(
+			'name' => $data['name'],
+			'gender' => $data['gender'],
+			'department' => $data['department'],
+			'changed' => REQUEST_TIME,
+		))
+		->condition('eid', $data['eid'])
+		->execute();
+	drupal_set_message(t('The employee was updated in Database'));
+}
+
+/**
+ * Implement function to view a employee record in database.
+ */
+function view_employee_record($id) {
+	$query = db_select('employee', 'e')
+		->fields('e')
+		->condition('eid', $id)
+		->execute();
+	return $query->fetch();
+}
+
+/**
+ * Custom function to generate a page for show all employees.
+ */
+function _employee_show_all_page() {
+	$result = employee_show_all_content();
+	$header = array('ID', 'Name', 'Email', 'Inserted at', 'Edit');
+	/*
+	foreach ($result as $node) {
+		$items[] = array(
+			'data' => l($node->name, 'employee/' . $node->eid),
+		);
+	}*/
+	$rows = array();
+	foreach ($result as $node) {
+		$rows[] = array(
+			$node->eid, 
+			$node->name, 
+			$node->email, 
+			$node->created,
+			l('Edit this employee', '/employee_edit/' . $node->eid),
+		);
+	};
+	if (empty($rows)) {
+		$page_array['employee_argument'] = array(
+			// Title serves as page subtitle
+			'#title' => t('All employees in database'),
+			'#markup' => t('No employees in database.'),
+		);
+		return $page_array;
+	}
+	else {
+		
+		$page_array['employee_argument'] = array(
+			'#title' => t('All employees in database'),
+			//'#items' => $items,
+			// Theme hook with suggestion.
+			'#theme' => 'item_list__employee',
+		);
+		return theme('table', array('header' => $header, 'rows' => $rows));//$page_array;
 	}
 }
 

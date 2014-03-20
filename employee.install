@@ -15,17 +15,16 @@ function employee_schema() {
 				'unsigned' => TRUE,
 				'not null' => TRUE
 			), 
-			// Version identifier
-			'vid' => array(
-				'description' => 'The current {employee_revisions}.vid version identifier',
-				'type' => 'int',
-				'unsigned' => TRUE,
-				'not null' => TRUE,
-				'default' => 0
-			),
 			// Name column
 			'name' => array(
 				'description' => 'The {employee_name} of this employee',
+				'type' => 'varchar',
+				'length' => 32,
+				'not null' => TRUE,
+			),
+			// Email column
+			'email' => array(
+				'description' => "The {employee_email} of this employee",
 				'type' => 'varchar',
 				'length' => 32,
 				'not null' => TRUE,
